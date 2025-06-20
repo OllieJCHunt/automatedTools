@@ -1,5 +1,3 @@
-from gzip import BadGzipFile
-
 import stix2
 import requests
 import tkinter as tk
