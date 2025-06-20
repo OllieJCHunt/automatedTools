@@ -86,6 +86,7 @@ def perform_search(*_):
     if not results:
         result_list.insert("end", "No matches found.")
 
+# Detailed viewer - further improvements possible
 def display_details(event):
     selection = result_list.curselection()
     if not selection or not results:
