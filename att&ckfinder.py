@@ -1,7 +1,10 @@
+from gzip import BadGzipFile
+
 import stix2
 import requests
 import tkinter as tk
 from tkinter import ttk, messagebox
+from rapidfuzz import fuzz
 import webbrowser
 
 
@@ -20,22 +23,42 @@ def load_attack_data():
         messagebox.showerror("Error", f"Could not fetch MITRE ATT&CK data:\n{e}")
         return None
 
-
-def search_techniques(data, keyword):
+# Original Search
+def strict_search(data, keyword):
     keyword = keyword.lower()
     results = []
     for obj in data.query([stix2.Filter("type", "=", "attack-pattern")]):
+        name = obj.get("name", "").lower()
+        desc = obj.get("description", "").lower()
+        if keyword in name or keyword in desc:
+            results.append({
+                "id": obj.external_references[0]["external_id"],
+                "name": obj["name"],
+                "description": desc.split("\n")[0],
+                "url": obj.external_references[0].get("url", "")
+            })
+    return results
+
+# Updated Fuzz Search
+def fuzzy_search(data, keyword, threshold=60):
+    results = []
+    keyword = keyword.lower()
+    for obj in data.query([stix2.Filter("type", "=", "attack-pattern")]):
         name = obj.get("name", "")
         desc = obj.get("description", "")
-        if keyword in name.lower() or keyword in desc.lower():
+        combined = (name + " " + desc).lower()
+        score = fuzz.token_set_ratio(keyword, combined)
+        if score >= threshold:
             results.append({
                 "id": obj.external_references[0]["external_id"],
                 "name": name,
-                "description": desc.split("\n")[0] if desc else "",
-                "url": obj.external_references[0].get("url", "")
-            })
+                "description": desc.split("\n")[0],
+                "url": obj.external_references[0].get("url", ""),
+                "score":score
 
-    return results
+            })
+    return sorted(results, key=lambda x: x["score"], reverse=True)
+
 
 # THEME AND VISUALS
 BG = "#1e1e1e"
@@ -57,9 +80,25 @@ paned.add(left, minsize=300)
 right = tk.Frame(paned, bg=BG)
 paned.add(right)
 
+
+
 tk.Label(left, text="Search Behavior or Tool:", font=FONT, bg=BG, fg=FG).pack(padx=10, pady=(10, 0))
 search_entry = tk.Entry(left, font=FONT, bg="#2a2a2a", fg=FG, insertbackground=FG)
 search_entry.pack(fill="x", padx=10, pady=5)
+
+use_fuzzy = tk.BooleanVar(value=True)
+tk.Checkbutton(
+    left,
+    text="Enable Fuzzy Search",
+    variable=use_fuzzy,
+    bg=BG,
+    fg=FG,
+    selectcolor=BG,
+    font=FONT,
+    activeforeground=HL,
+    anchor="w"
+).pack(anchor="w", padx=10, pady=(0, 10))
+
 
 result_list = tk.Listbox(left, font=FONT, bg="#2a2a2a", fg=FG, height=20)
 result_list.pack(fill="both", expand=True, padx=10, pady=(5, 10))
@@ -72,21 +111,31 @@ results = []
 attack_data = load_attack_data()
 
 
-# Bind search
+# Bind search / Performing function / Search Handler
 def perform_search(*_):
     global results
     keyword = search_entry.get().strip()
     if not keyword:
         return
+
     result_list.delete(0, "end")
     detail_text.delete("1.0", "end")
-    results = search_techniques(attack_data, keyword)
-    for item in results:
-        result_list.insert("end", f"{item['id']} — {item['name']}")
+
+    if use_fuzzy.get():
+        results = fuzzy_search(attack_data, keyword, threshold=60)
+    else:
+        results = strict_search(attack_data, keyword)
+
     if not results:
         result_list.insert("end", "No matches found.")
+    else:
+        for item in results:
+            display_text = f"{item['id']} — {item['name']}"
+            if "score" in item:
+                display_text += f" ({item['score']}%)"
+            result_list.insert("end", display_text)
 
-# Detailed viewer - further improvements possible
+# Detailed display - Clickable links, future improvement
 def display_details(event):
     selection = result_list.curselection()
     if not selection or not results:
