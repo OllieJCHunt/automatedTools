@@ -1,0 +1,12 @@
+antlr4-python-runtime==4.9.3
+certifi==2024.12.14
+charset-normalizer=3.4.1
+idna==3.10
+pytz==2025.2
+RapidFuzz==3.13.0
+requests==2.32.3
+simplejson==3.20.1
+six==1.17.0
+stix2==3.0.1
+stix2-patterns==2.0.0
+urllib3==2.3.0
