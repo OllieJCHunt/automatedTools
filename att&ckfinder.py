@@ -58,7 +58,7 @@ def fuzzy_search(data, keyword, threshold=60):
     return sorted(results, key=lambda x: x["score"], reverse=True)
 
 
-# THEME AND VISUALS
+# Themes and Visual
 BG = "#1e1e1e"
 FG = "#e0e0e0"
 HL = "#00c1ff"
@@ -133,7 +133,7 @@ def perform_search(*_):
                 display_text += f" ({item['score']}%)"
             result_list.insert("end", display_text)
 
-# Detailed display - Clickable links, future improvement
+# Detailed display
 def display_details(event):
     selection = result_list.curselection()
     if not selection or not results:
@@ -156,7 +156,8 @@ def display_details(event):
     if start:
         end = f"{start}+{len(item['url'])}c"
         detail_text.tag_add("link", start, end)
-        detail_text.tag_bind("link", "<Control-Button-1>", open_link)
+        detail_test.tag_bind("link", "<Double-Button-1>", open_link) # Double Click
+        detail_text.tag_bind("link", "<Control-Button-1>", open_link) # Ctrl + Click
 
 search_entry.bind("<Return>", perform_search)
 result_list.bind("<<ListboxSelect>>", display_details)
